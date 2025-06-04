@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Audio Library with Filters</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+    }
+    .audio-card {
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+    }
+    .download-btn {
+      display: inline-block;
+      padding: 6px 12px;
+      background: #007BFF;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      margin-top: 5px;
+    }
+    .download-btn:hover {
+      background: #0056b3;
+    }
+    .filters {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    input {
+      padding: 10px;
+      font-size: 16px;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Audio Library</h1>
+
+  <div class="filters">
+    <input type="text" id="filter-title" placeholder="Filter by title...">
+    <input type="text" id="filter-year" placeholder="Filter by year...">
+    <input type="text" id="filter-tags" placeholder="Filter by tag(s)...">
+  </div>
+
+  <div id="library"></div>
+
+  <script>
+    const SHEET_ID = '2PACX-1vTAL0o2E9GiVR47njFb1qDRNQYA08wzI89-nBzF1oZ7LK79Wf8TucPV7XcUJgWLXfWp7ysHOXc8q-bL'; // ← Replace with your actual Sheet ID
+    const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+
+    let audioData = [];
+
+    fetch(SHEET_URL)
+      .then(res => res.text())
+      .then(text => {
+        const json = JSON.parse(text.substring(47, text.length - 2)); // Strip padding
+        const rows = json.table.rows;
+
+        audioData = rows.map(row => ({
+          title: row.c[0]?.v || '',
+          year: row.c[1]?.v || '',
+          tags: (row.c[2]?.v || '').split(',').map(t => t.trim().toLowerCase()),
+          url: `https://drive.google.com/uc?export=download&id=${row.c[3]?.v || ''}`
+        }));
+
+        render(audioData);
+      });
+
+    function render(items) {
+      const container = document.getElementById('library');
+      container.innerHTML = '';
+      items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'audio-card';
+        div.innerHTML = `
+          <strong>${item.title}</strong> (${item.year})<br>
+          Tags: ${item.tags.join(', ')}<br>
+          <audio controls src="${item.url}"></audio><br>
+          <a href="${item.url}" download="${item.title}.mp3" class="download-btn">⬇️ Download</a>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function applyFilters() {
+      const titleFilter = document.getElementById('filter-title').value.toLowerCase();
+      const yearFilter = document.getElementById('filter-year').value.toLowerCase();
+      const tagsFilter = document.getElementById('filter-tags').value.toLowerCase();
+
+      const filtered = audioData.filter(item =>
+        item.title.toLowerCase().includes(titleFilter) &&
+        item.year.toLowerCase().includes(yearFilter) &&
+        item.tags.some(tag => tag.includes(tagsFilter))
+      );
+
+      render(filtered);
+    }
+
+    document.getElementById('filter-title').addEventListener('input', applyFilters);
+    document.getElementById('filter-year').addEventListener('input', applyFilters);
+    document.getElementById('filter-tags').addEventListener('input', applyFilters);
+  </script>
+</body>
+</html>
